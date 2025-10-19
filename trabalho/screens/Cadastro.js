@@ -11,83 +11,58 @@ import {
     ActivityIndicator,
     StatusBar
 } from 'react-native';
-import firebase from '../databases/Firebase';
+import firebase from '../databases/Firebase'; // Verifique se o caminho está correto
 
-export default function LoginScreen({ navigation }) {
+export default function CadastroScreen({ navigation }) {
+    const [nome, setNome] = useState("");
     const [mail, setMail] = useState("");
     const [pass, setPass] = useState("");
+    const [confirmPass, setConfirmPass] = useState("");
     const [isLoading, setLoading] = useState(false);
 
-    const tryLogin = () => {
-        console.log("Tentando fazer o login...");
-        
-        if (!mail || !pass) {
-            Alert.alert("Atenção", "Por favor, preencha e-mail e senha.");
+
+    const handleSignUp = () => {
+        if (!nome || !mail || !pass || !confirmPass) {
+            Alert.alert("Atenção", "Por favor, preencha todos os campos.");
+            return;
+        }
+        if (pass !== confirmPass) {
+            Alert.alert("Erro", "As senhas não conferem.");
             return;
         }
         setLoading(true);
-
-        firebase.auth().signInWithEmailAndPassword(mail, pass)
-        .then(userCredential => {
-            console.log('Usuário autenticado:', userCredential.user.email);
-            navigation.navigate("Principal");
-        })
-        .catch(error => {
-            console.log('Erro na autenticação:', error.code);
-            const errorMessage = getMessageByErrorCode(error.code);
-
-            if (error.code === 'auth/user-not-found') {
-                Alert.alert(
-                    'Usuário não encontrado',
-                    'Deseja cadastrar um novo usuário com este e-mail e senha?',
-                    [
-                        {
-                            text: 'Sim, cadastrar',
-                            onPress: () => {
-                                setLoading(true);
-                                firebase.auth().createUserWithEmailAndPassword(mail, pass)
-                                .then(userCredential => {
-                                    console.log('Usuário cadastrado com sucesso:', userCredential.user.email);
-                                    navigation.navigate("Principal");
-                                })
-                                .catch(creationError => {
-                                    console.log('Erro ao cadastrar:', creationError.code);
-                                    const creationErrorMessage = getMessageByErrorCode(creationError.code);
-                                    Alert.alert('Erro no Cadastro', creationErrorMessage);
-                                })
-                                .finally(() => setLoading(false));
-                            }
-                        },
-                        {
-                            text: 'Não',
-                            onPress: () => console.log('Usuário não quis criar conta.'),
-                            style: 'cancel'
-                        }
-                    ]
-                );
-            } else {
-                Alert.alert('Erro no Login', errorMessage);
-            }
-        })
-        .finally(() => {
-            setLoading(false);
-        });
+        firebase.auth().createUserWithEmailAndPassword(mail, pass)
+            .then(userCredential => {
+                console.log('Usuário criado com sucesso:', userCredential.user.email);
+                userCredential.user.updateProfile({
+                    displayName: nome
+                }).then(() => {
+                    console.log('Nome do usuário salvo com sucesso.');
+                    navigation.navigate("Principal");
+                }).catch(error => {
+                    console.error("Erro ao salvar o nome do usuário: ", error);
+                    navigation.navigate("Principal");
+                });
+            })
+            .catch(error => {
+                console.log('Erro ao criar usuário:', error.code);
+                const errorMessage = getMessageByErrorCode(error.code);
+                Alert.alert('Erro no Cadastro', errorMessage);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
     };
-
     const getMessageByErrorCode = (errorCode) => {
-        switch(errorCode) {
-            case 'auth/wrong-password':
-                return 'Senha incorreta.';
-            case 'auth/user-not-found':
-                return 'Este e-mail não está cadastrado.';
+        switch (errorCode) {
+            case 'auth/email-already-in-use':
+                return 'Este e-mail já está em uso por outra conta.';
             case 'auth/invalid-email':
                 return 'O formato do e-mail é inválido.';
             case 'auth/weak-password':
-                return 'A senha precisa ter no mínimo 6 caracteres.';
-            case 'auth/email-already-in-use':
-                return 'Este e-mail já está em uso por outra conta.';
+                return 'A senha é muito fraca. Tente uma com pelo menos 6 caracteres.';
             default:
-                return 'Ocorreu um erro. Tente novamente.';
+                return 'Ocorreu um erro inesperado. Tente novamente.';
         }
     };
 
@@ -99,11 +74,22 @@ export default function LoginScreen({ navigation }) {
             <StatusBar barStyle="light-content" />
             
             <View style={styles.header}>
-                <Text style={styles.title}>Bem-vindo!</Text>
-                <Text style={styles.subtitle}>Faça login para continuar</Text>
+                <Text style={styles.title}>Crie sua Conta</Text>
+                <Text style={styles.subtitle}>É rápido e fácil</Text>
             </View>
 
             <View style={styles.form}>
+                <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Nome Completo</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Seu nome"
+                        placeholderTextColor="#999"
+                        value={nome}
+                        onChangeText={setNome}
+                        editable={!isLoading}
+                    />
+                </View>
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>E-mail</Text>
                     <TextInput
@@ -114,16 +100,14 @@ export default function LoginScreen({ navigation }) {
                         onChangeText={setMail}
                         keyboardType="email-address"
                         autoCapitalize="none"
-                        autoCorrect={false}
                         editable={!isLoading}
                     />
                 </View>
-
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Senha</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="••••••••"
+                        placeholder="Mínimo 6 caracteres"
                         placeholderTextColor="#999"
                         secureTextEntry
                         value={pass}
@@ -131,27 +115,36 @@ export default function LoginScreen({ navigation }) {
                         editable={!isLoading}
                     />
                 </View>
-
+                <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Confirmar Senha</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Digite a senha novamente"
+                        placeholderTextColor="#999"
+                        secureTextEntry
+                        value={confirmPass}
+                        onChangeText={setConfirmPass}
+                        editable={!isLoading}
+                    />
+                </View>
                 <TouchableOpacity
                     style={[styles.button, isLoading && styles.buttonDisabled]}
-                    onPress={tryLogin}
+                    onPress={handleSignUp}
                     disabled={isLoading}
                     activeOpacity={0.8}
                 >
                     {isLoading ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.buttonText}>Entrar</Text>
+                        <Text style={styles.buttonText}>Cadastrar</Text>
                     )}
                 </TouchableOpacity>
-
                 <TouchableOpacity
                     style={[styles.button, styles.buttonSecondary, isLoading && styles.buttonDisabled]}
-                    onPress={() => navigation.navigate("Cadastro")} // CORREÇÃO APLICADA
+                    onPress={() => navigation.goBack()} 
                     disabled={isLoading}
-                    activeOpacity={0.8}
                 >
-                    <Text style={[styles.buttonText, styles.buttonTextSecondary]}>Cadastrar-se</Text>
+                    <Text style={[styles.buttonText, styles.buttonTextSecondary]}>Já tenho uma conta</Text>
                 </TouchableOpacity>
             </View>
         </KeyboardAvoidingView>
@@ -185,10 +178,10 @@ const styles = StyleSheet.create({
     form: {
         flex: 1,
         paddingHorizontal: 30,
-        paddingTop: 40,
+        paddingTop: 30, 
     },
     inputContainer: {
-        marginBottom: 20,
+        marginBottom: 15, 
     },
     label: {
         fontSize: 14,
@@ -204,11 +197,6 @@ const styles = StyleSheet.create({
         color: '#333',
         borderWidth: 1,
         borderColor: '#e0e0e0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
     },
     button: {
         backgroundColor: '#6c5ce7',
@@ -216,18 +204,10 @@ const styles = StyleSheet.create({
         padding: 16,
         alignItems: 'center',
         marginTop: 10,
-        shadowColor: '#6c5ce7',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
     },
     buttonSecondary: {
-        backgroundColor: '#f5f5f5',
-        borderWidth: 1,
-        borderColor: '#6c5ce7',
-        elevation: 0,
-        shadowOpacity: 0,
+        backgroundColor: 'transparent',
+        marginTop: 15,
     },
     buttonDisabled: {
         opacity: 0.7,
@@ -238,6 +218,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     buttonTextSecondary: {
-        color: '#6c5ce7',
+        color: '#6c5ce7', 
+        fontWeight: '600'
     }
 });
