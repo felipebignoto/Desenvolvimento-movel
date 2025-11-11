@@ -11,7 +11,7 @@ import {
     ActivityIndicator,
     StatusBar
 } from 'react-native';
-import firebase from '../databases/Firebase'; // Verifique se o caminho está correto
+import firebase from '../databases/Firebase';
 
 export default function CadastroScreen({ navigation }) {
     const [nome, setNome] = useState("");
